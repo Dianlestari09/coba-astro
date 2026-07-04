@@ -5,15 +5,13 @@ import sitemap from '@astrojs/sitemap';
 import { defineConfig, fontProviders } from 'astro/config';
 import tailwindcss from "@tailwindcss/vite";
 import icon from 'astro-icon';
-import node from '@astrojs/node';
+import vercel from '@astrojs/vercel'; // 1. Sudah diubah ke vercel
 
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://pro-cleaning-eta.vercel.app/',
 	output: 'server',
-	adapter: node({
-		mode: 'standalone',
-	}),
+	adapter: vercel(), // 2. Sudah diganti ke vercel() tanpa konfigurasi tambahan
 	vite: {
 		plugins: [tailwindcss()],
 	},
@@ -42,4 +40,5 @@ export default defineConfig({
 			},
 		},
 	],
-});
+}
+);
