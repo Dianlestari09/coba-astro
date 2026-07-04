@@ -1,0 +1,43 @@
+---
+export const prerender = false;
+
+import Layout from "../../layouts/Main.astro";
+import NewsCard from "../../components/card/NewsCardMain.astro";
+import { getDbBlogs } from "../../utils/dbService";
+
+const { slug } = Astro.params;
+const blogs = await getDbBlogs();
+const authorBlogs = blogs.filter((b: any) => b.data.author.slug === slug);
+
+if (authorBlogs.length === 0) {
+  return Astro.redirect("/404");
+}
+
+const authorName = authorBlogs[0].data.author.name;
+---
+
+<Layout title={`Posts by ${authorName}`}>
+  <section class="section">
+    <div class="container">
+      <!-- Breadcrumbs -->
+      <div class="breadcrumbs text-sm mb-6">
+        <ul class="flex! flex-wrap">
+          <li><a href="/">Home</a></li>
+          <li><a href="/blog">Blog</a></li>
+          <li>Author: {authorName}</li>
+        </ul>
+      </div>
+
+      <!-- Posts grid -->
+      <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 items-stretch">
+        {
+          authorBlogs.map((post: any) => (
+            <li>
+              <NewsCard {...post} />
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+</Layout>

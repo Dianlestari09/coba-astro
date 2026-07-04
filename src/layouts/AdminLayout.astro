@@ -1,0 +1,116 @@
+---
+import BaseHead from "../components/BaseHead.astro";
+import { Icon } from "astro-icon/components";
+
+const { title = "Admin Panel" } = Astro.props;
+
+// Basic Session Authentication Check
+const isLoggedIn = Astro.cookies.get("admin_session")?.value === "true";
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <BaseHead title={`${title} - ProCleaning Admin`} description="ProCleaning Admin Panel" />
+    <style>
+      /* Quick styling resets for admin */
+      body {
+        font-family: var(--font-atkinson), sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 min-h-screen text-gray-800">
+    {isLoggedIn ? (
+      <div class="drawer lg:drawer-open">
+        <input id="admin-drawer" type="checkbox" class="drawer-toggle" />
+        
+        <!-- Page content here -->
+        <div class="drawer-content flex flex-col min-h-screen">
+          <!-- Navbar -->
+          <div class="navbar bg-white border-b border-gray-200 lg:hidden px-4">
+            <div class="flex-none">
+              <label for="admin-drawer" class="btn btn-square btn-ghost drawer-button">
+                <Icon name="lucide:menu" size={24} />
+              </label>
+            </div>
+            <div class="flex-1">
+              <a href="/admin" class="btn btn-ghost text-xl font-bold text-main">ProCleaning Admin</a>
+            </div>
+          </div>
+          
+          <!-- Main Content View -->
+          <main class="flex-1 p-6 md:p-10 max-w-7xl w-full mx-auto">
+            <slot />
+          </main>
+        </div> 
+        
+        <!-- Sidebar Drawer -->
+        <div class="drawer-side border-r border-gray-200">
+          <label for="admin-drawer" aria-label="close sidebar" class="drawer-overlay"></label> 
+          <ul class="menu p-4 w-80 min-h-full bg-white text-base-content flex flex-col justify-between">
+            <div>
+              <!-- Sidebar Header -->
+              <div class="flex items-center gap-3 px-2 py-4 mb-6 border-b border-gray-100">
+                <div class="bg-main text-white p-2 rounded-lg">
+                  <Icon name="lucide:shield-check" size={24} />
+                </div>
+                <div>
+                  <h1 class="font-bold text-lg text-gray-800">ProCleaning</h1>
+                  <span class="text-xs font-semibold text-main uppercase">Admin Console</span>
+                </div>
+              </div>
+
+              <!-- Sidebar Links -->
+              <li class="mb-1">
+                <a href="/admin" class={`flex items-center gap-3 p-3 rounded-lg font-medium transition-colors ${Astro.url.pathname === "/admin" ? "bg-main/10 text-main font-semibold" : "hover:bg-gray-100 text-gray-600"}`}>
+                  <Icon name="lucide:layout-dashboard" size={20} />
+                  Dashboard
+                </a>
+              </li>
+              <li class="mb-1">
+                <a href="/admin/blog" class={`flex items-center gap-3 p-3 rounded-lg font-medium transition-colors ${Astro.url.pathname.startsWith("/admin/blog") ? "bg-main/10 text-main font-semibold" : "hover:bg-gray-100 text-gray-600"}`}>
+                  <Icon name="lucide:newspaper" size={20} />
+                  Manage Blogs
+                </a>
+              </li>
+              <li class="mb-1">
+                <a href="/admin/service" class={`flex items-center gap-3 p-3 rounded-lg font-medium transition-colors ${Astro.url.pathname.startsWith("/admin/service") ? "bg-main/10 text-main font-semibold" : "hover:bg-gray-100 text-gray-600"}`}>
+                  <Icon name="lucide:sparkles" size={20} />
+                  Manage Services
+                </a>
+              </li>
+              <li class="mb-1">
+                <a href="/admin/team" class={`flex items-center gap-3 p-3 rounded-lg font-medium transition-colors ${Astro.url.pathname.startsWith("/admin/team") ? "bg-main/10 text-main font-semibold" : "hover:bg-gray-100 text-gray-600"}`}>
+                  <Icon name="lucide:users" size={20} />
+                  Manage Team
+                </a>
+              </li>
+            </div>
+            
+            <!-- Sidebar Footer / Logout -->
+            <div class="border-t border-gray-100 pt-4">
+              <li class="mb-1">
+                <a href="/" target="_blank" class="flex items-center gap-3 p-3 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
+                  <Icon name="lucide:external-link" size={20} />
+                  View Website
+                </a>
+              </li>
+              <li>
+                <form action="/admin/login" method="POST" class="w-full p-0">
+                  <input type="hidden" name="action" value="logout" />
+                  <button type="submit" class="btn btn-outline btn-error btn-sm w-full flex items-center gap-2 mt-2">
+                    <Icon name="lucide:log-out" size={16} />
+                    Logout
+                  </button>
+                </form>
+              </li>
+            </div>
+          </ul>
+        </div>
+      </div>
+    ) : (
+      <!-- Empty Slot for login page view -->
+      <slot />
+    )}
+  </body>
+</html>

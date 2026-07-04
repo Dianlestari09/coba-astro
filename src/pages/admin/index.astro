@@ -1,0 +1,109 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+import { getDbBlogs, getDbServices, getDbTeams } from "../../utils/dbService";
+import { Icon } from "astro-icon/components";
+
+export const prerender = false; // Run server-side
+
+const isLoggedIn = Astro.cookies.get("admin_session")?.value === "true";
+if (!isLoggedIn) {
+  return Astro.redirect("/admin/login");
+}
+
+const blogs = await getDbBlogs();
+const services = await getDbServices();
+const team = await getDbTeams();
+---
+
+<AdminLayout title="Dashboard">
+  <div>
+    <!-- Top Greeting -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-bold text-gray-900">Welcome, Admin!</h1>
+      <p class="text-gray-500 mt-1">Here is a quick overview of the ProCleaning website contents.</p>
+    </div>
+
+    <!-- Quick Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      <!-- Blogs Card -->
+      <div class="card bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-row items-center gap-4">
+        <div class="p-4 bg-blue-50 text-blue-600 rounded-xl">
+          <Icon name="lucide:newspaper" class="h-8 w-8" />
+        </div>
+        <div>
+          <span class="text-sm font-medium text-gray-400 uppercase">Blog Posts</span>
+          <h2 class="text-3xl font-bold text-gray-800 mt-1">{blogs.length}</h2>
+        </div>
+      </div>
+
+      <!-- Services Card -->
+      <div class="card bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-row items-center gap-4">
+        <div class="p-4 bg-emerald-50 text-emerald-600 rounded-xl">
+          <Icon name="lucide:sparkles" class="h-8 w-8" />
+        </div>
+        <div>
+          <span class="text-sm font-medium text-gray-400 uppercase">Services</span>
+          <h2 class="text-3xl font-bold text-gray-800 mt-1">{services.length}</h2>
+        </div>
+      </div>
+
+      <!-- Team Card -->
+      <div class="card bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-row items-center gap-4">
+        <div class="p-4 bg-purple-50 text-purple-600 rounded-xl">
+          <Icon name="lucide:users" class="h-8 w-8" />
+        </div>
+        <div>
+          <span class="text-sm font-medium text-gray-400 uppercase">Team Members</span>
+          <h2 class="text-3xl font-bold text-gray-800 mt-1">{team.length}</h2>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Section with Quick Links and Info -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Database Connection Status & Guide -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <Icon name="lucide:database" class="text-main" />
+          XAMPP Connection Guide
+        </h2>
+        <div class="prose text-gray-600 text-sm space-y-4">
+          <p>
+            Your Astro app is configured to connect to the XAMPP MySQL database dynamically via Server-Side Rendering (SSR).
+          </p>
+          <div class="bg-gray-50 border border-gray-100 rounded-xl p-4 font-mono text-xs">
+            Host: localhost<br/>
+            Port: 3306<br/>
+            Database: procleaning_db<br/>
+            Status: <span class="badge badge-success text-white">Connected</span>
+          </div>
+          <p class="text-xs text-gray-400">
+            If the database is not running, the application will fallback to local markdown data automatically, so the website never crashes.
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <h2 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <Icon name="lucide:settings-2" class="text-main" />
+          Quick Actions
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <a href="/admin/blog/edit" class="btn btn-outline border-gray-300 text-gray-700 hover:bg-main hover:text-white hover:border-main rounded-xl p-4 h-auto flex flex-col items-center justify-center gap-2">
+            <Icon name="lucide:plus" size={20} />
+            <span class="text-xs font-semibold text-center">New Blog Post</span>
+          </a>
+          <a href="/admin/service/edit" class="btn btn-outline border-gray-300 text-gray-700 hover:bg-main hover:text-white hover:border-main rounded-xl p-4 h-auto flex flex-col items-center justify-center gap-2">
+            <Icon name="lucide:plus" size={20} />
+            <span class="text-xs font-semibold text-center">New Service</span>
+          </a>
+          <a href="/admin/team/edit" class="btn btn-outline border-gray-300 text-gray-700 hover:bg-main hover:text-white hover:border-main rounded-xl p-4 h-auto flex flex-col items-center justify-center gap-2">
+            <Icon name="lucide:plus" size={20} />
+            <span class="text-xs font-semibold text-center">Add Team Member</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</AdminLayout>
