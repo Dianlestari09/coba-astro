@@ -1,12 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.SUPABASE_ANON_KEY;
+const supabaseUrl = (typeof process !== 'undefined' ? process.env?.SUPABASE_URL : undefined) || import.meta.env.SUPABASE_URL;
+const supabaseAnonKey = (typeof process !== 'undefined' ? process.env?.SUPABASE_ANON_KEY : undefined) || import.meta.env.SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+// Safe client instantiation: if credentials are not configured,
+// we create a dummy/null client to prevent module initialization crash.
+export const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null as any;
 
 export async function checkConnection(): Promise<boolean> {
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !supabaseAnonKey || !supabase) {
     return false;
   }
 
