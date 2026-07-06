@@ -69,10 +69,18 @@ const FALLBACK_TEAMS = [
   }
 ];
 
-// Helper to check if DB is connected
-let dbConnected = false;
+// Helper to check if DB is connected with 30s caching to prevent multiple redundant checks per page render
+let dbConnected: boolean | null = null;
+let lastCheckTime = 0;
+const CACHE_TTL = 30000; // 30 seconds
+
 async function isConnected() {
+  const now = Date.now();
+  if (dbConnected !== null && (now - lastCheckTime) < CACHE_TTL) {
+    return dbConnected;
+  }
   dbConnected = await checkConnection();
+  lastCheckTime = now;
   return dbConnected;
 }
 
