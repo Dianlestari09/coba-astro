@@ -1,20 +1,34 @@
 ---
-export const prerender = true;
+export const prerender = false;
 
 import { getDbTeams } from "../../utils/dbService";
 import Layout from "../../layouts/Main.astro";
 import Pagination from "../../components/pagination.astro";
 import TeamCard from "../../components/card/TeamCard.astro";
 
-export async function getStaticPaths({ paginate }) {
-  const team = await getDbTeams();
+const allTeam = await getDbTeams();
+const pageSize = 6;
 
-  return paginate(team, {
-    pageSize: 6,
-  });
-}
+// Get current page from query parameter (e.g. /team?page=2)
+const url = new URL(Astro.request.url);
+const currentPage = parseInt(url.searchParams.get("page") || "1");
 
-const { page } = Astro.props;
+// Calculate pagination
+const lastPage = Math.max(1, Math.ceil(allTeam.length / pageSize));
+const startIndex = (currentPage - 1) * pageSize;
+const endIndex = startIndex + pageSize;
+const data = allTeam.slice(startIndex, endIndex);
+
+// Build page object compatible with Pagination component
+const page = {
+  data,
+  currentPage,
+  lastPage,
+  url: {
+    prev: currentPage > 1 ? `/team?page=${currentPage - 1}` : null,
+    next: currentPage < lastPage ? `/team?page=${currentPage + 1}` : null,
+  },
+};
 ---
 
 <Layout title="Team">
@@ -31,7 +45,7 @@ const { page } = Astro.props;
         class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 items-stretch"
       >
         {
-          page.data.map((post) => (
+          data.map((post) => (
             <li>
               <TeamCard {...post} />
             </li>

@@ -1,6 +1,6 @@
-import { query, checkConnection } from './db';
+import { supabase, checkConnection } from './db';
 
-// Fallback lists in case XAMPP MySQL is not connected or running.
+// Fallback lists in case Supabase is not connected or running.
 // This ensures the site never crashes during builds or local setup.
 const FALLBACK_BLOGS = [
   {
@@ -81,7 +81,14 @@ async function isConnected() {
 export async function getDbBlogs() {
   try {
     if (!(await isConnected())) return FALLBACK_BLOGS;
-    const rows = await query('SELECT * FROM blogs ORDER BY pubDate DESC');
+    const { data: rows, error } = await supabase
+      .from('blogs')
+      .select('*')
+      .order('pubDate', { ascending: false });
+
+    if (error) throw error;
+    if (!rows) return FALLBACK_BLOGS;
+
     return rows.map((row: any) => ({
       id: row.slug,
       data: {
@@ -96,7 +103,7 @@ export async function getDbBlogs() {
       body: row.body
     }));
   } catch (e) {
-    console.error('Error fetching blogs from DB:', e);
+    console.error('Error fetching blogs from Supabase:', e);
     return FALLBACK_BLOGS;
   }
 }
@@ -106,9 +113,15 @@ export async function getDbBlogBySlug(slug: string) {
     if (!(await isConnected())) {
       return FALLBACK_BLOGS.find(b => b.id === slug) || null;
     }
-    const rows = await query('SELECT * FROM blogs WHERE slug = ?', [slug]);
+    const { data: rows, error } = await supabase
+      .from('blogs')
+      .select('*')
+      .eq('slug', slug);
+
+    if (error) throw error;
     if (!rows || rows.length === 0) return null;
     const row = rows[0];
+
     return {
       id: row.slug,
       data: {
@@ -123,7 +136,7 @@ export async function getDbBlogBySlug(slug: string) {
       body: row.body
     };
   } catch (e) {
-    console.error(`Error fetching blog by slug ${slug}:`, e);
+    console.error(`Error fetching blog by slug ${slug} from Supabase:`, e);
     return FALLBACK_BLOGS.find(b => b.id === slug) || null;
   }
 }
@@ -133,7 +146,16 @@ export async function getDbBlogsExcept(slug: string, limit: number = 3) {
     if (!(await isConnected())) {
       return FALLBACK_BLOGS.filter(b => b.id !== slug).slice(0, limit);
     }
-    const rows = await query('SELECT * FROM blogs WHERE slug != ? ORDER BY pubDate DESC LIMIT ?', [slug, limit]);
+    const { data: rows, error } = await supabase
+      .from('blogs')
+      .select('*')
+      .neq('slug', slug)
+      .order('pubDate', { ascending: false })
+      .limit(limit);
+
+    if (error) throw error;
+    if (!rows) return FALLBACK_BLOGS.filter(b => b.id !== slug).slice(0, limit);
+
     return rows.map((row: any) => ({
       id: row.slug,
       data: {
@@ -148,7 +170,7 @@ export async function getDbBlogsExcept(slug: string, limit: number = 3) {
       body: row.body
     }));
   } catch (e) {
-    console.error(`Error fetching related blogs:`, e);
+    console.error(`Error fetching related blogs from Supabase:`, e);
     return FALLBACK_BLOGS.filter(b => b.id !== slug).slice(0, limit);
   }
 }
@@ -169,49 +191,66 @@ export async function saveDbBlog(data: {
   const conn = await isConnected();
   if (!conn) throw new Error('Database not connected. Cannot perform write operations.');
 
+  const payload: any = {
+    slug: data.slug,
+    title: data.title,
+    description: data.description,
+    body: data.body,
+    author_slug: data.author_slug,
+    author_name: data.author_name,
+    category_slug: data.category_slug,
+    category_title: data.category_title,
+    updatedDate: new Date().toISOString()
+  };
+
+  if (data.thumbnail) {
+    payload.thumbnail = data.thumbnail;
+  }
+
   if (data.id) {
     // Update
-    await query(
-      `UPDATE blogs SET 
-        slug = ?, title = ?, description = ?, body = ?, 
-        thumbnail = COALESCE(?, thumbnail), author_slug = ?, author_name = ?, 
-        category_slug = ?, category_title = ? 
-       WHERE id = ?`,
-      [
-        data.slug, data.title, data.description, data.body, 
-        data.thumbnail || null, data.author_slug, data.author_name, 
-        data.category_slug, data.category_title, data.id
-      ]
-    );
+    const { error } = await supabase
+      .from('blogs')
+      .update(payload)
+      .eq('id', data.id);
+    if (error) throw error;
   } else {
     // Insert
-    await query(
-      `INSERT INTO blogs 
-        (slug, title, description, body, pubDate, thumbnail, author_slug, author_name, category_slug, category_title) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        data.slug, data.title, data.description, data.body, 
-        data.pubDate || new Date(), data.thumbnail || null, data.author_slug, 
-        data.author_name, data.category_slug, data.category_title
-      ]
-    );
+    payload.pubDate = data.pubDate || new Date().toISOString();
+    const { error } = await supabase
+      .from('blogs')
+      .insert([payload]);
+    if (error) throw error;
   }
 }
 
 export async function deleteDbBlog(id: number) {
   const conn = await isConnected();
   if (!conn) throw new Error('Database not connected. Cannot perform write operations.');
-  await query('DELETE FROM blogs WHERE id = ?', [id]);
+  const { error } = await supabase
+    .from('blogs')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function getRawBlogsTable() {
   if (!(await isConnected())) return [];
-  return await query('SELECT * FROM blogs ORDER BY pubDate DESC');
+  const { data, error } = await supabase
+    .from('blogs')
+    .select('*')
+    .order('pubDate', { ascending: false });
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getRawBlogById(id: number) {
   if (!(await isConnected())) return null;
-  const rows = await query('SELECT * FROM blogs WHERE id = ?', [id]);
+  const { data: rows, error } = await supabase
+    .from('blogs')
+    .select('*')
+    .eq('id', id);
+  if (error) throw error;
   return rows && rows.length > 0 ? rows[0] : null;
 }
 
@@ -221,7 +260,14 @@ export async function getRawBlogById(id: number) {
 export async function getDbServices() {
   try {
     if (!(await isConnected())) return FALLBACK_SERVICES;
-    const rows = await query('SELECT * FROM services ORDER BY pubDate DESC');
+    const { data: rows, error } = await supabase
+      .from('services')
+      .select('*')
+      .order('pubDate', { ascending: false });
+
+    if (error) throw error;
+    if (!rows) return FALLBACK_SERVICES;
+
     return rows.map((row: any) => ({
       id: row.slug,
       data: {
@@ -235,7 +281,7 @@ export async function getDbServices() {
       body: row.body
     }));
   } catch (e) {
-    console.error('Error fetching services from DB:', e);
+    console.error('Error fetching services from Supabase:', e);
     return FALLBACK_SERVICES;
   }
 }
@@ -245,9 +291,15 @@ export async function getDbServiceBySlug(slug: string) {
     if (!(await isConnected())) {
       return FALLBACK_SERVICES.find(s => s.id === slug) || null;
     }
-    const rows = await query('SELECT * FROM services WHERE slug = ?', [slug]);
+    const { data: rows, error } = await supabase
+      .from('services')
+      .select('*')
+      .eq('slug', slug);
+
+    if (error) throw error;
     if (!rows || rows.length === 0) return null;
     const row = rows[0];
+
     return {
       id: row.slug,
       data: {
@@ -261,7 +313,7 @@ export async function getDbServiceBySlug(slug: string) {
       body: row.body
     };
   } catch (e) {
-    console.error(`Error fetching service by slug ${slug}:`, e);
+    console.error(`Error fetching service by slug ${slug} from Supabase:`, e);
     return FALLBACK_SERVICES.find(s => s.id === slug) || null;
   }
 }
@@ -279,44 +331,61 @@ export async function saveDbService(data: {
   const conn = await isConnected();
   if (!conn) throw new Error('Database not connected. Cannot perform write operations.');
 
+  const payload: any = {
+    slug: data.slug,
+    title: data.title,
+    description: data.description,
+    body: data.body,
+    featured: data.featured,
+    updatedDate: new Date().toISOString()
+  };
+
+  if (data.thumbnail) {
+    payload.thumbnail = data.thumbnail;
+  }
+
   if (data.id) {
-    await query(
-      `UPDATE services SET 
-        slug = ?, title = ?, description = ?, body = ?, 
-        thumbnail = COALESCE(?, thumbnail), featured = ? 
-       WHERE id = ?`,
-      [
-        data.slug, data.title, data.description, data.body, 
-        data.thumbnail || null, data.featured ? 1 : 0, data.id
-      ]
-    );
+    const { error } = await supabase
+      .from('services')
+      .update(payload)
+      .eq('id', data.id);
+    if (error) throw error;
   } else {
-    await query(
-      `INSERT INTO services 
-        (slug, title, description, body, pubDate, thumbnail, featured) 
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        data.slug, data.title, data.description, data.body, 
-        data.pubDate || new Date(), data.thumbnail || null, data.featured ? 1 : 0
-      ]
-    );
+    payload.pubDate = data.pubDate || new Date().toISOString();
+    const { error } = await supabase
+      .from('services')
+      .insert([payload]);
+    if (error) throw error;
   }
 }
 
 export async function deleteDbService(id: number) {
   const conn = await isConnected();
   if (!conn) throw new Error('Database not connected. Cannot perform write operations.');
-  await query('DELETE FROM services WHERE id = ?', [id]);
+  const { error } = await supabase
+    .from('services')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function getRawServicesTable() {
   if (!(await isConnected())) return [];
-  return await query('SELECT * FROM services ORDER BY pubDate DESC');
+  const { data, error } = await supabase
+    .from('services')
+    .select('*')
+    .order('pubDate', { ascending: false });
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getRawServiceById(id: number) {
   if (!(await isConnected())) return null;
-  const rows = await query('SELECT * FROM services WHERE id = ?', [id]);
+  const { data: rows, error } = await supabase
+    .from('services')
+    .select('*')
+    .eq('id', id);
+  if (error) throw error;
   return rows && rows.length > 0 ? rows[0] : null;
 }
 
@@ -326,7 +395,14 @@ export async function getRawServiceById(id: number) {
 export async function getDbTeams() {
   try {
     if (!(await isConnected())) return FALLBACK_TEAMS;
-    const rows = await query('SELECT * FROM teams ORDER BY pubDate DESC');
+    const { data: rows, error } = await supabase
+      .from('teams')
+      .select('*')
+      .order('pubDate', { ascending: false });
+
+    if (error) throw error;
+    if (!rows) return FALLBACK_TEAMS;
+
     return rows.map((row: any) => ({
       id: row.slug,
       data: {
@@ -341,7 +417,7 @@ export async function getDbTeams() {
       body: row.body
     }));
   } catch (e) {
-    console.error('Error fetching teams from DB:', e);
+    console.error('Error fetching teams from Supabase:', e);
     return FALLBACK_TEAMS;
   }
 }
@@ -351,9 +427,15 @@ export async function getDbTeamBySlug(slug: string) {
     if (!(await isConnected())) {
       return FALLBACK_TEAMS.find(t => t.id === slug) || null;
     }
-    const rows = await query('SELECT * FROM teams WHERE slug = ?', [slug]);
+    const { data: rows, error } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('slug', slug);
+
+    if (error) throw error;
     if (!rows || rows.length === 0) return null;
     const row = rows[0];
+
     return {
       id: row.slug,
       data: {
@@ -368,7 +450,7 @@ export async function getDbTeamBySlug(slug: string) {
       body: row.body
     };
   } catch (e) {
-    console.error(`Error fetching team by slug ${slug}:`, e);
+    console.error(`Error fetching team by slug ${slug} from Supabase:`, e);
     return FALLBACK_TEAMS.find(t => t.id === slug) || null;
   }
 }
@@ -387,43 +469,61 @@ export async function saveDbTeam(data: {
   const conn = await isConnected();
   if (!conn) throw new Error('Database not connected. Cannot perform write operations.');
 
+  const payload: any = {
+    slug: data.slug,
+    title: data.title,
+    description: data.description,
+    body: data.body,
+    featured: data.featured,
+    rating: data.rating,
+    updatedDate: new Date().toISOString()
+  };
+
+  if (data.thumbnail) {
+    payload.thumbnail = data.thumbnail;
+  }
+
   if (data.id) {
-    await query(
-      `UPDATE teams SET 
-        slug = ?, title = ?, description = ?, body = ?, 
-        thumbnail = COALESCE(?, thumbnail), featured = ?, rating = ? 
-       WHERE id = ?`,
-      [
-        data.slug, data.title, data.description, data.body, 
-        data.thumbnail || null, data.featured ? 1 : 0, data.rating, data.id
-      ]
-    );
+    const { error } = await supabase
+      .from('teams')
+      .update(payload)
+      .eq('id', data.id);
+    if (error) throw error;
   } else {
-    await query(
-      `INSERT INTO teams 
-        (slug, title, description, body, pubDate, thumbnail, featured, rating) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        data.slug, data.title, data.description, data.body, 
-        data.pubDate || new Date(), data.thumbnail || null, data.featured ? 1 : 0, data.rating
-      ]
-    );
+    payload.pubDate = data.pubDate || new Date().toISOString();
+    const { error } = await supabase
+      .from('teams')
+      .insert([payload]);
+    if (error) throw error;
   }
 }
 
 export async function deleteDbTeam(id: number) {
   const conn = await isConnected();
   if (!conn) throw new Error('Database not connected. Cannot perform write operations.');
-  await query('DELETE FROM teams WHERE id = ?', [id]);
+  const { error } = await supabase
+    .from('teams')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
 }
 
 export async function getRawTeamsTable() {
   if (!(await isConnected())) return [];
-  return await query('SELECT * FROM teams ORDER BY pubDate DESC');
+  const { data, error } = await supabase
+    .from('teams')
+    .select('*')
+    .order('pubDate', { ascending: false });
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getRawTeamById(id: number) {
   if (!(await isConnected())) return null;
-  const rows = await query('SELECT * FROM teams WHERE id = ?', [id]);
+  const { data: rows, error } = await supabase
+    .from('teams')
+    .select('*')
+    .eq('id', id);
+  if (error) throw error;
   return rows && rows.length > 0 ? rows[0] : null;
 }

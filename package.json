@@ -21,11 +21,11 @@
     "@iconify-json/logos": "^1.2.11",
     "@iconify-json/lucide": "^1.2.111",
     "@iconify-json/simple-icons": "^1.2.85",
+    "@supabase/supabase-js": "^2.110.0",
     "@tailwindcss/vite": "^4.3.0",
     "astro": "^6.4.2",
     "astro-icon": "^1.1.5",
     "marked": "^18.0.5",
-    "mysql2": "^3.22.5",
     "sharp": "^0.34.3",
     "swiper": "^12.2.0",
     "tailwindcss": "^4.3.0"

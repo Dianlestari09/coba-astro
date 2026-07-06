@@ -1,0 +1,90 @@
+---
+export const prerender = false;
+
+import { getDbBlogs } from "../../utils/dbService";
+import Layout from "../../layouts/Main.astro";
+import Pagination from "../../components/pagination.astro";
+import NewsCard from "../../components/card/NewsCardMain.astro";
+
+const allPosts = await getDbBlogs();
+const pageSize = 6;
+
+// Get current page from query parameter (e.g. /blog?page=2)
+const url = new URL(Astro.request.url);
+const currentPage = parseInt(url.searchParams.get('page') || '1');
+
+// Calculate pagination
+const lastPage = Math.max(1, Math.ceil(allPosts.length / pageSize));
+const startIndex = (currentPage - 1) * pageSize;
+const endIndex = startIndex + pageSize;
+const data = allPosts.slice(startIndex, endIndex);
+
+// Build page object compatible with Pagination component
+const page = {
+  data,
+  currentPage,
+  lastPage,
+  size: pageSize,
+  url: {
+    prev: currentPage > 1 ? `/blog?page=${currentPage - 1}` : null,
+    next: currentPage < lastPage ? `/blog?page=${currentPage + 1}` : null,
+  },
+};
+
+const site = Astro.site?.toString() ?? "";
+
+const baseUrl = `${site}blog/`;
+
+const itemList = data.map((post, index) => {
+  return {
+    "@type": "ListItem",
+    position: index + 1 + (currentPage - 1) * pageSize,
+    url: `${site}blog/${post.id}/`,
+  };
+});
+---
+
+<!-- ✅ SEO: CollectionPage + ItemList -->
+<script
+  type="application/ld+json"
+  set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Blog",
+    url: baseUrl,
+    mainEntity: {
+      "@type": "ItemList",
+      itemListElement: itemList,
+    },
+  })}
+/>
+
+<Layout title="Blog">
+  <section class="section">
+    <div class="container">
+      <!-- Breadcrumbs -->
+      <div class="breadcrumbs text-sm mb-6">
+        <ul class="flex! flex-wrap">
+          <li><a href="/">Home</a></li>
+          <li>Blog</li>
+        </ul>
+      </div>
+
+      <!-- Posts grid -->
+      <ul
+        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 items-stretch"
+      >
+        {
+          data.map((post) => (
+            <li>
+              <NewsCard {...post} />
+            </li>
+          ))
+        }
+      </ul>
+
+      {page.lastPage != 1 && <Pagination page={page} />}
+    </div>
+  </section>
+</Layout>
+
